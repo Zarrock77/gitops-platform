@@ -1,0 +1,36 @@
+replicaCount: 2
+
+image:
+  repository: ghcr.io/OWNER/gitops-platform-app
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8080
+
+ingress:
+  enabled: true
+  className: nginx
+  host: demo.localhost
+
+resources:
+  requests:
+    cpu: 25m
+    memory: 32Mi
+  limits:
+    cpu: 100m
+    memory: 64Mi
+
+# Creates a Prometheus Operator ServiceMonitor (provided by kube-prometheus-stack).
+serviceMonitor:
+  enabled: true
+  interval: 15s
+  path: /metrics
+
+# A PodDisruptionBudget keeps at least one replica available during voluntary
+# disruptions (node drains, rollouts) — a small but real SRE touch.
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1

@@ -1,0 +1,18 @@
+# Go
+/app/bin/
+*.test
+*.out
+
+# sed backups produced by `platform.sh configure`
+*.bak
+
+# local kubeconfig dumps / secrets
+kubeconfig
+*.local.yaml
+.env
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

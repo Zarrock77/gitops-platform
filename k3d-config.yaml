@@ -1,0 +1,22 @@
+# k3d cluster definition. Traefik is disabled because we run ingress-nginx.
+# The loadbalancer publishes host port 8080 -> cluster port 80 so that
+# http://<host>.localhost:8080 reaches the ingress controller.
+apiVersion: k3d.io/v1alpha5
+kind: Simple
+metadata:
+  name: gitops-platform
+servers: 1
+agents: 2
+ports:
+  - port: 8080:80
+    nodeFilters:
+      - loadbalancer
+  - port: 8443:443
+    nodeFilters:
+      - loadbalancer
+options:
+  k3s:
+    extraArgs:
+      - arg: --disable=traefik
+        nodeFilters:
+          - server:*

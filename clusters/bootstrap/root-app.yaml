@@ -1,0 +1,24 @@
+# App-of-Apps root: ArgoCD watches clusters/apps/ and creates every Application
+# it finds there. Adding a new app to the platform = committing a YAML file.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: root
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/OWNER/gitops-platform.git
+    targetRevision: main
+    path: clusters/apps
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

@@ -1,0 +1,55 @@
+# kube-prometheus-stack (Prometheus + Grafana + Alertmanager + exporters)
+# pulled straight from the upstream Helm repo and managed by ArgoCD.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: monitoring
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://prometheus-community.github.io/helm-charts
+    chart: kube-prometheus-stack
+    targetRevision: 65.5.1
+    helm:
+      releaseName: monitoring
+      values: |
+        grafana:
+          adminPassword: admin
+          service:
+            type: ClusterIP
+          ingress:
+            enabled: true
+            ingressClassName: nginx
+            hosts:
+              - grafana.localhost
+        prometheus:
+          prometheusSpec:
+            # Scrape ServiceMonitors from all namespaces, not just labelled ones.
+            serviceMonitorSelectorNilUsesHelmValues: false
+            retention: 6h
+            resources:
+              requests:
+                cpu: 100m
+                memory: 256Mi
+        # Trim components that aren't needed for a local demo cluster.
+        alertmanager:
+          enabled: true
+        kubeEtcd:
+          enabled: false
+        kubeControllerManager:
+          enabled: false
+        kubeScheduler:
+          enabled: false
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
