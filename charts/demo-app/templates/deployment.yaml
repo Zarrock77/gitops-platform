@@ -16,6 +16,10 @@ spec:
     spec:
       securityContext:
         runAsNonRoot: true
+        # 65532 is the numeric UID/GID of the "nonroot" user in distroless images.
+        # Kubernetes needs a numeric UID to enforce runAsNonRoot (a username can't be verified).
+        runAsUser: 65532
+        runAsGroup: 65532
         seccompProfile:
           type: RuntimeDefault
       containers:
