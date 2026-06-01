@@ -9,6 +9,14 @@ APP_IMAGE="gitops-platform-app"
 ARGOCD_MANIFEST="https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# On Git Bash / MSYS, native Windows binaries (docker, k3d, helm, kubectl) need
+# Windows-style paths. cygpath converts them; on Linux/macOS it's absent and we
+# return the path unchanged. Pair with MSYS_NO_PATHCONV=1 when an arg like
+# ":/src" must not be auto-mangled by the shell.
+winpath() {
+  if command -v cygpath >/dev/null 2>&1; then cygpath -m "$1"; else printf '%s' "$1"; fi
+}
+
 log()  { printf '\033[1;36m▶ %s\033[0m\n' "$*"; }
 ok()   { printf '\033[1;32m✓ %s\033[0m\n' "$*"; }
 warn() { printf '\033[1;33m! %s\033[0m\n' "$*"; }
@@ -21,14 +29,14 @@ require() {
 
 cmd_test() {
   log "Running Go tests in a container (no local Go needed)"
-  docker run --rm -v "$ROOT/app":/src -w /src golang:1.23-alpine go test ./...
+  MSYS_NO_PATHCONV=1 docker run --rm -v "$(winpath "$ROOT/app"):/src" -w /src golang:1.23-alpine go test ./...
   ok "tests passed"
 }
 
 cmd_build() {
   require docker
   log "Building image $APP_IMAGE:dev"
-  docker build -t "$APP_IMAGE:dev" --build-arg VERSION=dev "$ROOT/app"
+  docker build -t "$APP_IMAGE:dev" --build-arg VERSION=dev "$(winpath "$ROOT/app")"
   ok "image built"
 }
 
@@ -38,7 +46,7 @@ cmd_cluster() {
     warn "cluster $CLUSTER already exists"
   else
     log "Creating k3d cluster"
-    k3d cluster create --config "$ROOT/k3d-config.yaml"
+    k3d cluster create --config "$(winpath "$ROOT/k3d-config.yaml")"
     ok "cluster created"
   fi
   kubectl config use-context "k3d-$CLUSTER" >/dev/null
@@ -59,7 +67,9 @@ cmd_argocd() {
   require kubectl
   log "Installing ArgoCD"
   kubectl get namespace argocd >/dev/null 2>&1 || kubectl create namespace argocd
-  kubectl apply -n argocd -f "$ARGOCD_MANIFEST"
+  # Server-side apply: the applicationsets CRD exceeds the 256 KB annotation
+  # limit of client-side apply's last-applied-configuration.
+  kubectl apply -n argocd --server-side=true --force-conflicts -f "$ARGOCD_MANIFEST"
   log "Waiting for ArgoCD server to be ready"
   kubectl rollout status -n argocd deploy/argocd-server --timeout=180s
   ok "ArgoCD ready"
@@ -88,7 +98,7 @@ cmd_bootstrap() {
     exit 1
   fi
   log "Applying App-of-Apps root"
-  kubectl apply -f "$ROOT/clusters/bootstrap/root-app.yaml"
+  kubectl apply -f "$(winpath "$ROOT/clusters/bootstrap/root-app.yaml")"
   ok "ArgoCD will now sync the platform from Git."
 }
 
@@ -97,7 +107,7 @@ cmd_bootstrap() {
 cmd_demo() {
   require helm kubectl
   log "Deploying demo-app via Helm (local image)"
-  helm upgrade --install demo-app "$ROOT/charts/demo-app" \
+  helm upgrade --install demo-app "$(winpath "$ROOT/charts/demo-app")" \
     --namespace demo --create-namespace \
     --set image.repository="$APP_IMAGE" --set image.tag=dev \
     --set serviceMonitor.enabled=false \
@@ -113,7 +123,7 @@ cmd_demo() {
     --set prometheus.prometheusSpec.serviceMonitorSelectorNilUsesHelmValues=false \
     --wait --timeout 10m
   log "Re-enabling ServiceMonitor for the app"
-  helm upgrade demo-app "$ROOT/charts/demo-app" \
+  helm upgrade demo-app "$(winpath "$ROOT/charts/demo-app")" \
     --namespace demo \
     --set image.repository="$APP_IMAGE" --set image.tag=dev
   ok "Demo deployed."
