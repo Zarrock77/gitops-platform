@@ -1,7 +1,7 @@
 replicaCount: 2
 
 image:
-  repository: ghcr.io/OWNER/gitops-platform-app
+  repository: ghcr.io/Zarrock77/gitops-platform-app
   tag: "latest"
   pullPolicy: IfNotPresent
 

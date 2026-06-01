@@ -10,7 +10,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/OWNER/gitops-platform.git
+    repoURL: https://github.com/Zarrock77/gitops-platform.git
     targetRevision: main
     path: clusters/apps
   destination:
